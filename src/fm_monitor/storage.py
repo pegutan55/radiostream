@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-try:
-    from zoneinfo import ZoneInfo
-except ModuleNotFoundError:
-    from backports.zoneinfo import ZoneInfo
+
+JST = timezone(timedelta(hours=9))
 
 
 class Storage:
@@ -67,5 +65,4 @@ class Storage:
 
 
 def _timestamp(now: datetime | None) -> str:
-    JST = ZoneInfo("Asia/Tokyo")
     return (now or datetime.now(JST)).isoformat(timespec="seconds")
