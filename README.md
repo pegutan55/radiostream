@@ -47,3 +47,20 @@ systemctl list-timers radiostream-monitor.timer
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
+
+## ラズパイ上でsqliteを利用するケース
+```
+/usr/bin/python3 - <<'PY'
+import sqlite3
+
+db = "data/radiostream.sqlite3"
+connection = sqlite3.connect(db)
+
+connection.execute(f"update stream_state set stream_url = 'test.url' where id = 1")
+rows = connection.execute(f"SELECT * FROM stream_state ORDER BY id DESC LIMIT 10")
+for row in rows:
+    print(row)
+
+connection.close()
+PY
+```
