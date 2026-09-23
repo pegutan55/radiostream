@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from xml.etree import ElementTree
 from urllib import request
 
 from .config import Settings
 from .notifier import PushNotifier
 from .storage import Storage
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -26,10 +29,12 @@ class Monitor:
         self.settings = settings
         self.storage = storage
         self.notifier = notifier or PushNotifier(
-            settings.push_endpoint,
-            settings.push_token,
-            settings.push_topic,
-            settings.request_timeout,
+            provider=settings.notification_provider,
+            endpoint=settings.push_endpoint,
+            token=(settings.line_access_token if settings.notification_provider in {"line", "line-broadcast"} else settings.push_token),
+            topic=settings.push_topic,
+            timeout=settings.request_timeout,
+            line_to=settings.line_to,
         )
 
     def run_once(self) -> MonitorResult:
@@ -49,8 +54,8 @@ class Monitor:
         self.storage.save_log(message)
         try:
             self.notifier.send("ストリームURLに変更がありました。")
-        except Exception:
-            pass
+        except Exception as error:
+            logger.warning("Push通知に失敗しました。処理は継続します: %s", error)
         self.storage.save_stream_url(current_url)
         return MonitorResult("changed", current_url, message)
 
@@ -66,18 +71,17 @@ class Monitor:
         except ElementTree.ParseError as error:
             raise ValueError("ストリームURL管理用XMLを解析できませんでした") from error
 
+        tokyo = None
         for data in root.findall(".//stream_url/data"):
-            area = data.find("area")
-
-            if area is not None and area.text == "tokyo":
+            direct_area = data.find("area")
+            if _is_tokyo(direct_area):
                 tokyo = data
                 break
+            nested_area = next((element for element in data.iter() if _is_tokyo(element)), None)
+            if nested_area is not None:
+                tokyo = nested_area
+                break
 
-        # data = _find_child(_find_child(_find_child(root, "stream_url"), "data"), "areajp")
-        # tokyo = next(
-        #     (element for element in data.iter() if _contains_text_or_attribute(element, "東京")),
-        #     None,
-        # )
         if tokyo is None:
             raise ValueError("ストリームURL管理用XMLから東京の要素を取得できませんでした")
         stream_url = _find_child(tokyo, "fmhls")
@@ -99,6 +103,13 @@ def _contains_text_or_attribute(element: ElementTree.Element, value: str) -> boo
     if value in (element.text or ""):
         return True
     return any(value in attribute for attribute in element.attrib.values())
+
+
+def _is_tokyo(element: ElementTree.Element | None) -> bool:
+    if element is None:
+        return False
+    text = (element.text or "").strip().lower()
+    return text in {"tokyo", "東京"}
 
 
 def _local_name(tag: str) -> str:

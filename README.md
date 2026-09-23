@@ -14,7 +14,16 @@ cp config.example.ini config.ini
 # config.iniのtarget_url、stream_url_pattern、Push通知設定を編集
 ```
 
-`notification.endpoint`には、ntfyなどHTTP POSTを受け付けるPushサービスのpublish URLを指定します。`token`と`topic`は必要なサービスに合わせて設定してください。
+通知方式は`config.ini`の`notification.provider`で選択します。`line-broadcast`を指定すると、`to`なしでLINE公式アカウントの友だち全員へ送信します。
+
+```ini
+[notification]
+provider = line-broadcast
+access_token = LINE_CHANNEL_ACCESS_TOKEN
+to =
+```
+
+LINE公式アカウントを友だち追加しているユーザー全員へ送信されます。`to`は不要です。特定のユーザーやグループへ送る場合は`provider = line`に戻し、`to`を設定します。ntfyを使う場合は`provider = ntfy`に戻し、`endpoint`、`token`、`topic`を設定します。
 
 ## 実行
 

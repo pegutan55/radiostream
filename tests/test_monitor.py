@@ -1,9 +1,11 @@
 from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
+import json
 
 from fm_monitor.config import Settings
 from fm_monitor.monitor import Monitor
+from fm_monitor.notifier import PushNotifier
 from fm_monitor.storage import Storage
 
 
@@ -26,9 +28,12 @@ def settings(database_path: Path) -> Settings:
         database_path=database_path,
         request_timeout=5,
         user_agent="test",
+        notification_provider="ntfy",
         push_endpoint="https://push.example.test",
         push_token="",
         push_topic="",
+        line_access_token="",
+        line_to="",
     )
 
 
@@ -106,3 +111,48 @@ class MonitorTest(unittest.TestCase):
         print(f"取得したストリームURL: {stream_url}")
         self.assertEqual(stream_url, "https://stream.example/tokyo.m3u8")
         database_path.unlink(missing_ok=True)
+
+
+class LineNotifierTest(unittest.TestCase):
+    def test_sends_line_push_message(self) -> None:
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        notifier = PushNotifier(
+            endpoint="",
+            provider="line",
+            token="line-token",
+            line_to="user-id",
+        )
+
+        with patch("fm_monitor.notifier.request.urlopen", return_value=response) as open_url:
+            notifier.send("テスト通知")
+
+        sent_request = open_url.call_args.args[0]
+        self.assertEqual(sent_request.full_url, "https://api.line.me/v2/bot/message/push")
+        self.assertEqual(sent_request.get_header("Authorization"), "Bearer line-token")
+        self.assertEqual(
+            json.loads(sent_request.data),
+            {"to": "user-id", "messages": [{"type": "text", "text": "テスト通知"}]},
+        )
+
+    def test_sends_line_broadcast_without_destination(self) -> None:
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        notifier = PushNotifier(
+            endpoint="",
+            provider="line-broadcast",
+            token="line-token",
+        )
+
+        with patch("fm_monitor.notifier.request.urlopen", return_value=response) as open_url:
+            notifier.send("全員へのテスト通知")
+
+        sent_request = open_url.call_args.args[0]
+        self.assertEqual(sent_request.full_url, "https://api.line.me/v2/bot/message/broadcast")
+        self.assertEqual(sent_request.get_header("Authorization"), "Bearer line-token")
+        self.assertEqual(
+            json.loads(sent_request.data),
+            {"messages": [{"type": "text", "text": "全員へのテスト通知"}]},
+        )
