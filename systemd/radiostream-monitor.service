@@ -1,0 +1,10 @@
+[Unit]
+Description=FM radio stream URL monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/radiostream
+ExecStart=/usr/bin/python3 -m fm_monitor --config /opt/radiostream/config.ini --once
+Environment=PYTHONPATH=/opt/radiostream/src
