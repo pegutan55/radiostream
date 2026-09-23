@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from pathlib import Path
+
+try:
+    from zoneinfo import ZoneInfo
+except ModuleNotFoundError:
+    from backports.zoneinfo import ZoneInfo
 
 
 class Storage:
