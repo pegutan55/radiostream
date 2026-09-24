@@ -9,18 +9,26 @@ from pathlib import Path
 from .config import load_settings
 from .monitor import Monitor
 from .storage import Storage
+from .sync import LogSynchronizer
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="FMラジオストリームURL変更検知")
     parser.add_argument("--config", type=Path, default=Path("config.ini"))
     parser.add_argument("--once", action="store_true", help="1回だけ実行して終了")
+    parser.add_argument("--sync", action="store_true", help="D1へ未同期ログを送信して終了")
     parser.add_argument("--at", default="03:00", help="常駐実行時の毎日の実行時刻 (HH:MM)")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     settings = load_settings(args.config)
-    monitor = Monitor(settings, Storage(settings.database_path))
+    storage = Storage(settings.database_path)
+    if args.sync:
+        result = LogSynchronizer(settings, storage).run_once()
+        logging.info("D1同期: %d件送信、最後の同期ID=%d", result.sent, result.last_synced_log_id)
+        return 0
+
+    monitor = Monitor(settings, storage)
     if args.once:
         result = monitor.run_once()
         logging.info("%s: %s", result.status, result.message.replace("\n", " "))

@@ -27,6 +27,11 @@ class Storage:
                     message TEXT NOT NULL,
                     executed_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS sync_state (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    last_execution_log_id INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -56,6 +61,41 @@ class Storage:
             connection.execute(
                 "INSERT INTO execution_logs (message, executed_at) VALUES (?, ?)",
                 (message, _timestamp(now)),
+            )
+
+    def get_last_synced_log_id(self) -> int:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT last_execution_log_id FROM sync_state WHERE id = 1"
+            ).fetchone()
+        return int(row[0]) if row else 0
+
+    def get_logs_after(self, log_id: int, limit: int) -> list[sqlite3.Row]:
+        with self._connect() as connection:
+            return connection.execute(
+                """
+                SELECT id, message, executed_at
+                FROM execution_logs
+                WHERE id > ?
+                ORDER BY id
+                LIMIT ?
+                """,
+                (log_id, limit),
+            ).fetchall()
+
+    def save_last_synced_log_id(
+        self, log_id: int, now: datetime | None = None
+    ) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO sync_state (id, last_execution_log_id, updated_at)
+                VALUES (1, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    last_execution_log_id = excluded.last_execution_log_id,
+                    updated_at = excluded.updated_at
+                """,
+                (log_id, _timestamp(now)),
             )
 
     def _connect(self) -> sqlite3.Connection:

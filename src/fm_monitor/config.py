@@ -18,6 +18,10 @@ class Settings:
     push_topic: str
     line_access_token: str
     line_to: str
+    sync_endpoint: str = ""
+    sync_token: str = ""
+    sync_source_id: str = "pi-main"
+    sync_batch_size: int = 500
 
 
 def load_settings(path: Path) -> Settings:
@@ -28,6 +32,7 @@ def load_settings(path: Path) -> Settings:
     source = parser["source"]
     storage = parser["storage"]
     notification = parser["notification"]
+    sync = parser["sync"] if parser.has_section("sync") else {}
     target_url = source.get("target_url", "").strip()
     if urlparse(target_url).scheme not in {"http", "https"}:
         raise ValueError("source.target_urlにはhttpまたはhttpsのURLを指定してください")
@@ -43,4 +48,8 @@ def load_settings(path: Path) -> Settings:
         push_topic=notification.get("topic", "").strip(),
         line_access_token=notification.get("access_token", "").strip(),
         line_to=notification.get("to", "").strip(),
+        sync_endpoint=sync.get("endpoint", "").strip(),
+        sync_token=sync.get("token", "").strip(),
+        sync_source_id=sync.get("source_id", "pi-main").strip(),
+        sync_batch_size=int(sync.get("batch_size", "500")),
     )

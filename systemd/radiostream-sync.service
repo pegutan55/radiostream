@@ -1,0 +1,10 @@
+[Unit]
+Description=Sync radiostream logs to Cloudflare D1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/radiostream
+ExecStart=/usr/bin/python3 -m fm_monitor --config /opt/radiostream/config.ini --sync
+Environment=PYTHONPATH=/opt/radiostream/src

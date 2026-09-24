@@ -32,6 +32,37 @@ LINE公式アカウントを友だち追加しているユーザー全員へ送�
 PYTHONPATH=src python3 -m fm_monitor --config config.ini --once
 ```
 
+## Cloudflare D1へのログ同期
+
+`config.ini`に、Cloudflare Workerの同期API設定を追加します。`token`にはWorkerの
+`SYNC_TOKEN`と同じ値を設定し、設定ファイルは他のユーザーから読めないようにします。
+
+```ini
+[sync]
+endpoint = https://radiostream-sync.example.workers.dev
+token = Workerに登録したSYNC_TOKEN
+source_id = pi-main
+batch_size = 500
+```
+
+同期は、SQLiteの`execution_logs`から`sync_state`に保存されたIDより後の行を最大500件取得し、
+Workerが成功を返した後にだけ送信済みIDを更新します。失敗した場合は次回に同じ行を再送します。
+
+手動実行:
+
+```sh
+PYTHONPATH=src python3 -m fm_monitor --config config.ini --sync
+```
+
+systemdで毎日実行する場合は、`systemd/radiostream-sync.service`と
+`systemd/radiostream-sync.timer`を`/etc/systemd/system/`へ配置して有効化します。
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now radiostream-sync.timer
+systemctl list-timers radiostream-sync.timer
+```
+
 Raspberry Piでは、`systemd/radiostream-monitor.service`と`systemd/radiostream-monitor.timer`を`/etc/systemd/system/`へ配置し、`WorkingDirectory`と`ExecStart`を配置先に合わせてから有効化します。
 
 ```sh
