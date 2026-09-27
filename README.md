@@ -71,6 +71,28 @@ sudo systemctl enable --now radiostream-monitor.timer
 systemctl list-timers radiostream-monitor.timer
 ```
 
+## テーブル構成
+### stream_state
+| カラム | 型 | PK |
+| --- | --- | --- |
+| id | INTEGER | ◯ |
+| stream_url | TEXT | |
+| updated_at | TEXT | |
+
+### execution_logs
+| カラム | 型 | PK |
+| --- | --- | --- |
+| id | INTEGER | ◯ |
+| message | TEXT | |
+| executed_at | TEXT | |
+
+### sync_state
+| カラム | 型 | PK |
+| --- | --- | --- |
+| id | INTEGER | ◯ |
+| last_execution_log_id | INTEGER | |
+| updated_at | TEXT | |
+
 ## テスト
 
 外部パッケージなしで実行できます。
